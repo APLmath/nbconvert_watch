@@ -8,4 +8,7 @@ setup(name='nbconvert_watch',
       author_email='andrew.lee.cal@gmail.com',
       license='MIT',
       packages=['nbconvert_watch'],
+      install_requires=[
+          'watchdog',
+      ],
       zip_safe=False)
