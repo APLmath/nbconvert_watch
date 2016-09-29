@@ -84,6 +84,7 @@ def main(notebook_dir, results_dir):
     observer = Observer()
     observer.schedule(event_handler, notebook_dir, recursive=False)
     observer.start()
+    print('Press Control-C to stop')
     try:
         while True:
             time.sleep(1)

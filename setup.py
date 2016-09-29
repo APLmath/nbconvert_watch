@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='nbconvert_watch',
-      version='0.1.1',
+      version='0.1.2',
       description='Monitor Jupyter notebooks and run them automatically',
       url='https://github.com/APLmath/nbconvert_watch',
       author='Andrew Lee',
