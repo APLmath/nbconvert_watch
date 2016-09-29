@@ -11,4 +11,7 @@ setup(name='nbconvert_watch',
       install_requires=[
           'watchdog',
       ],
+      entry_points = {
+          'console_scripts': ['nbconvert-watch=nbconvert_watch.command_line:main'],
+      },
       zip_safe=False)

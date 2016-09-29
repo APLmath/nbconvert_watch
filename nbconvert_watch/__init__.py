@@ -73,14 +73,7 @@ class RunNotebookEventHandler(PatternMatchingEventHandler):
         print(event.src_path + ' deleted')
         self.run(event)
 
-if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print('Welcome to nbconvert_watch! Please run "python %s <notebook folder> <results folder>"' % __file__)
-        print('Press Enter to continue...')
-        input()
-        exit()
-
-    notebook_dir, results_dir = sys.argv[1:3]
+def main(notebook_dir, results_dir):
     notebook_dir = os.path.abspath(notebook_dir)
     results_dir = os.path.abspath(results_dir)
 
@@ -96,3 +89,13 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         observer.stop()
     observer.join()
+
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print('Welcome to nbconvert_watch! Please run "python %s <notebook folder> <results folder>"' % __file__)
+        print('Press Enter to continue...')
+        input()
+        exit()
+
+    notebook_dir, results_dir = sys.argv[1:3]
+    main(notebook_dir, results_dir)
