@@ -4,6 +4,7 @@ import subprocess
 import threading    
 import os
 import os.path
+import signal
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 
