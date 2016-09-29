@@ -6,7 +6,7 @@ def main():
         print('Welcome to nbconvert-watch! Please run "nbconvert-watch <notebook folder> <results folder>"')
         print('Press Enter to continue...')
         input()
-        exit()
+        return 0
 
     notebook_dir, results_dir = sys.argv[1:3]
     nbconvert_watch.main(notebook_dir, results_dir)
