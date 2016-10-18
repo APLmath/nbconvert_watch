@@ -22,57 +22,43 @@ def coalesce(sec=5):
 
         return delayed_func
     return coalesce_decorator
-    
 
-@coalesce(5)
-def test():
-    print 'Hello'
-
-class Test(object):
-    @coalesce(5)
-    def go(self, text):
-        print text
-
-def process_apply_and_signal(func, args, completed_value, process_event):
-    func(*args)
+def process_apply_and_signal(func, args, kwargs, completed_value, process_event):
+    func(*args, **kwargs)
     completed_value.value = True
     process_event.set()
 
 class KillableProcess(object):
-    def __init__(self, func, args):
-        def thread_func(func, args, thread_event):
-            time.sleep(5)
-            completed_value = multiprocessing.Value('b', False)
-            process_event = multiprocessing.Event()
-            process = multiprocessing.Process(target=process_apply_and_signal, args=(func, args, completed_value, process_event))
-            process.start()
-            process_event.wait()
-            if not completed_value.value:
-                process.kill()
+    def __init__(self, func, args=(), kwargs={}):
         self.func = func
         self.args = args
-        self.completed = False
-        self.event = multiprocessing.Event()
+        self.kwargs = kwargs
+        self.completed_value = multiprocessing.Value('b', False)
+        self.process_event = multiprocessing.Event()
 
     def start(self):
-        def wrapped_func(func, args, event):
-            process = multiprocessing.Process(target=func, args=self.args)
+        def thread_func(func, args, kwargs, completed_value, process_event):
+            process = multiprocessing.Process(target=process_apply_and_signal, args=(func, args, kwargs, completed_value, process_event))
             process.start()
-            process.wait()
-            self.completed = True
-            event.set()
+            process_event.wait()
+            
+            if not completed_value.value:
+                psutil_process = psutil.Process(pid=process.pid)
+                psutil_process.kill()
         
+        thread = threading.Thread(target=thread_func, args=(self.func, self.args, self.kwargs, self.completed_value, self.process_event))
+        thread.start()
 
     def kill(self):
-        self.event.set()
+        self.process_event.set()
 
 class KeyedProcessPool(object):
     def __init__(self):
         self.processes = {}
-        self.scheduler = sched.scheduler(time.time, time.sleep)
-        self.last_call
 
-    def apply_async(key, func, args):
+    @coalesce(sec=5)
+    def apply_async(self, key, func, args=(), kwargs={}):
         if self.processes.has_key(key):
             self.processes[key].kill()
             del self.processes[key]
+        self.processes[key] = KillableProcess(func, args=args, kwargs=kwargs)
