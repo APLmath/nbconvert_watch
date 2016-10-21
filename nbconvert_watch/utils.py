@@ -43,7 +43,7 @@ class KillableProcess(object):
             process = multiprocessing.Process(target=process_apply_and_signal, args=(func, args, kwargs, completed_value, process_event))
             process.start()
             process_event.wait()
-            
+
             if completed_value.value:
                 if self.completion_func:
                     self.completion_func()
@@ -61,12 +61,15 @@ class KeyedProcessPool(object):
     def __init__(self):
         self.processes = {}
 
-    @coalesce(sec=5)
     def apply_async(self, key, func, args=(), kwargs={}):
         if self.processes.has_key(key):
             self.processes[key].kill()
             del self.processes[key]
 
+        self.__apply_async_lazy(key, func, args, kwargs)
+
+    @coalesce(sec=5)
+    def __apply_async_lazy(self, key, func, args=(), kwargs={}):
         def delete_key_from_processes():
             del self.processes[key]
 
