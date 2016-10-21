@@ -29,8 +29,9 @@ def process_apply_and_signal(func, args, kwargs, completed_value, process_event)
     process_event.set()
 
 class KillableProcess(object):
-    def __init__(self, func, args=(), kwargs={}):
+    def __init__(self, func, completion_func, args=(), kwargs={}):
         self.func = func
+        self.completion_func = completion_func
         self.args = args
         self.kwargs = kwargs
         self.completed_value = multiprocessing.Value('b', False)
@@ -42,7 +43,9 @@ class KillableProcess(object):
             process.start()
             process_event.wait()
             
-            if not completed_value.value:
+            if completed_value.value:
+                self.completion_func()
+            else:
                 psutil_process = psutil.Process(pid=process.pid)
                 psutil_process.kill()
         
@@ -61,4 +64,10 @@ class KeyedProcessPool(object):
         if self.processes.has_key(key):
             self.processes[key].kill()
             del self.processes[key]
-        self.processes[key] = KillableProcess(func, args=args, kwargs=kwargs)
+
+        def delete_key_from_dict():
+            del self.processes[key]
+
+        process = KillableProcess(func, delete_key_from_dict, args=args, kwargs=kwargs)
+        self.processes[key] = process
+        process.start()
