@@ -1,10 +1,6 @@
-import sys
 import time
-import subprocess
-import threading    
-import os
+import threading
 import os.path
-import signal
 import nbformat
 import nbconvert
 import utils
