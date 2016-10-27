@@ -18,7 +18,9 @@ def runAndConvertNotebook(notebook_path, results_dir):
     with open(notebook_path) as f:
         notebook = nbformat.read(f, as_version=4)
 
-    execute_preprocessor = nbconvert.preprocessors.ExecutePreprocessor(timeout=None)
+    execute_preprocessor = nbconvert.preprocessors.ExecutePreprocessor(
+        timeout=None,
+        allow_errors=True)
     execute_preprocessor.preprocess(notebook, {
         'metadata': {
             'path': os.path.dirname(notebook_path)
