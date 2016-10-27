@@ -1,10 +1,10 @@
 import nbconvert_watch
-import sys
+import argparse
 
 def main():
-    if len(sys.argv) != 3:
-        print('Welcome to nbconvert-watch! Please run "nbconvert-watch <notebook folder> <results folder>"')
-        return 0
+    parser = argparse.ArgumentParser(description='Automatically run and convert notebooks as you edit.')
+    parser.add_argument('notebook_dir', help='The directory to watch for .ipynb notebooks')
+    parser.add_argument('results_dir', help='The directory to save the results')
+    args = parser.parse_args()
 
-    notebook_dir, results_dir = sys.argv[1:3]
-    nbconvert_watch.main(notebook_dir, results_dir)
+    nbconvert_watch.main(args.notebook_dir, args.results_dir)
