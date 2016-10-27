@@ -3,26 +3,6 @@ import threading
 import psutil
 import time
 
-def coalesce(sec=5):
-    def coalesce_decorator(func):
-        upcoming_invocation = [None]
-        lock = threading.Lock()
-
-        def delayed_func(*args, **kwargs):
-            def delayed_call():
-                with lock:
-                    upcoming_invocation[0] = None
-                func(*args, **kwargs)
-
-            with lock:
-                if upcoming_invocation[0]:
-                    upcoming_invocation[0].cancel()
-                upcoming_invocation[0] = threading.Timer(sec, delayed_call)
-                upcoming_invocation[0].start()
-
-        return delayed_func
-    return coalesce_decorator
-
 def process_apply_and_signal(func, args, kwargs, completed_value, process_event):
     func(*args, **kwargs)
     completed_value.value = True
@@ -58,21 +38,29 @@ class KillableProcess(object):
         self.process_event.set()
 
 class KeyedProcessPool(object):
-    def __init__(self):
-        self.processes = {}
+    def __init__(self, throttle_sec=5):
+        self.lock = threading.Lock()
+        self.throttle_sec = throttle_sec
+        self.upcoming_invocations = {}
+        self.active_processes = {}
 
     def apply_async(self, key, func, args=(), kwargs={}):
-        if self.processes.has_key(key):
-            self.processes[key].kill()
-            del self.processes[key]
+        if self.active_processes.has_key(key):
+            self.active_processes[key].kill()
+            del self.active_processes[key]
 
-        self.__apply_async_lazy(key, func, args, kwargs)
-
-    @coalesce(sec=5)
-    def __apply_async_lazy(self, key, func, args=(), kwargs={}):
         def delete_key_from_processes():
-            del self.processes[key]
+            del self.active_processes[key]
 
-        process = KillableProcess(func, args=args, kwargs=kwargs, completion_func=delete_key_from_processes)
-        self.processes[key] = process
-        process.start()
+        def delayed_invocation():
+            with self.lock:
+                del self.upcoming_invocations[key]
+            process = KillableProcess(func, args=args, kwargs=kwargs, completion_func=delete_key_from_processes)
+            self.active_processes[key] = process
+            process.start()
+
+        with self.lock:
+            if self.upcoming_invocations.has_key(key):
+                self.upcoming_invocations[key].cancel()
+            self.upcoming_invocations[key] = threading.Timer(self.throttle_sec, delayed_invocation)
+            self.upcoming_invocations[key].start()

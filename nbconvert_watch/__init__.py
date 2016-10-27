@@ -5,51 +5,35 @@ import threading
 import os
 import os.path
 import signal
+import nbformat
+import nbconvert
+import utils
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 
-_DEBUG = True
+def runAndConvertNotebook(notebook_path, results_dir):
+    if not os.path.isfile(notebook_path):
+        return
 
-class KillableProcess(object):
-    def __init__(self, cmd):
-        self.process = subprocess.Popen(cmd, creationflags=(0 if _DEBUG else 0x08000000), shell=True)
+    with open(notebook_path) as f:
+        notebook = nbformat.read(f, as_version=4)
 
-    def kill(self):
-        if hasattr(os, 'getpgid'): # UNIX
-            os.killpg(os.getpgid(self.process.pid), signal.SIGINT)
-        else: # Windows
-            subprocess.Popen('TASKKILL /F /PID {pid} /T'.format(pid=self.process.pid))
+    execute_preprocessor = nbconvert.preprocessors.ExecutePreprocessor(timeout=None)
+    execute_preprocessor.preprocess(notebook, {
+        'metadata': {
+            'path': os.path.dirname(notebook_path)
+        }
+    })
 
-def runCommand(notebook_path, results_dir):
-    cmd = '''jupyter nbconvert --to=html --output-dir="%s" --execute --allow-errors --ExecutePreprocessor.timeout=-1 "%s"'''
-    cmd = cmd % (results_dir, notebook_path)
-    print('Running command: %s' % cmd)
-    return KillableProcess(cmd)
+    html_exporter = nbconvert.HTMLExporter()
 
-class ThrottledPool(object):
+    body, resources = html_exporter.from_notebook_node(notebook)
 
-    def __init__(self, throttle_time=5):
-        self.throttle_time = throttle_time
-        self.lock = threading.Lock()
-        self.counters = {}
-        self.processes = {}
+    result_basename = os.path.splitext(os.path.basename(notebook_path))[0]
+    result_path = os.path.join(results_dir, result_basename + '.html')
 
-    def run(self, notebook_path, results_dir):
-        def maybeRunJob():
-            with self.lock:
-                if notebook_path in self.processes:
-                    success = self.processes[notebook_path].kill()
-                    print('Terminating %s' % notebook_path)
-                    del self.processes[notebook_path]
-                self.counters[notebook_path] = self.counters.get(notebook_path, 0) + 1
-            time.sleep(self.throttle_time)
-            with self.lock:
-                self.counters[notebook_path] -= 1
-                if self.counters[notebook_path] <= 0:
-                    self.counters[notebook_path] = 0
-                    if os.path.isfile(notebook_path):
-                        self.processes[notebook_path] = runCommand(notebook_path, results_dir)
-        threading.Thread(target=maybeRunJob).start()
+    with open(result_path, 'w') as f:
+        f.write(body)
 
 class RunNotebookEventHandler(PatternMatchingEventHandler):
 
@@ -57,21 +41,19 @@ class RunNotebookEventHandler(PatternMatchingEventHandler):
         super(RunNotebookEventHandler, self).__init__(patterns=["*.ipynb"], ignore_directories=True)
         self.notebook_dir = notebook_dir
         self.results_dir = results_dir
-        self.pool = ThrottledPool()
+        self.pool = utils.KeyedProcessPool()
 
     def run(self, event):
-        self.pool.run(os.path.join(self.notebook_dir, event.src_path), self.results_dir)
+        notebook_path = os.path.join(self.notebook_dir, event.src_path)
+        self.pool.apply_async(notebook_path, runAndConvertNotebook, args=(notebook_path, self.results_dir))
 
     def on_created(self, event):
-        print(event.src_path + ' created')
         self.run(event)
 
     def on_modified(self, event):
-        print(event.src_path + ' modified')
         self.run(event)
 
     def on_deleted(self, event):
-        print(event.src_path + ' deleted')
         self.run(event)
 
 def main(notebook_dir, results_dir):
@@ -91,13 +73,3 @@ def main(notebook_dir, results_dir):
     except KeyboardInterrupt:
         observer.stop()
     observer.join()
-
-if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print('Welcome to nbconvert_watch! Please run "python %s <notebook folder> <results folder>"' % __file__)
-        print('Press Enter to continue...')
-        input()
-        exit()
-
-    notebook_dir, results_dir = sys.argv[1:3]
-    main(notebook_dir, results_dir)
