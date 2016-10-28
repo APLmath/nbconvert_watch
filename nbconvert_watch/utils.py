@@ -24,15 +24,16 @@ class KillableProcess(object):
             process.start()
             process_event.wait()
 
-            if completed_value.value:
-                if self.completion_func:
-                    self.completion_func()
-            else:
+            if not completed_value.value:
                 psutil_process = psutil.Process(pid=process.pid)
                 psutil_process.kill()
-        
+
+            self.completion_func()
+
         thread = threading.Thread(target=thread_func, args=(self.target, self.args, self.kwargs, self.completed_value, self.process_event))
         thread.start()
+
+        self.start_time = time.time()
 
     def kill(self):
         self.process_event.set()
@@ -47,7 +48,6 @@ class KeyedProcessPool(object):
     def apply_async(self, key, func, args=(), kwargs={}):
         if self.active_processes.has_key(key):
             self.active_processes[key].kill()
-            del self.active_processes[key]
 
         def delete_key_from_processes():
             del self.active_processes[key]
@@ -73,4 +73,3 @@ class KeyedProcessPool(object):
         
         for key, active_process in self.active_processes.items():
             active_process.kill()
-            del self.active_processes[key]
