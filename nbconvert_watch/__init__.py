@@ -3,7 +3,7 @@ import threading
 import os.path
 import nbformat
 import nbconvert
-import utils
+from nbconvert_watch import utils
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 
