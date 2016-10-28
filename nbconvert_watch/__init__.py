@@ -53,6 +53,9 @@ class RunNotebookEventHandler(PatternMatchingEventHandler):
 
     def on_deleted(self, event):
         self.run(event)
+    
+    def stop(self):
+        self.pool.close()
 
 def main(notebook_dir, results_dir):
     notebook_dir = os.path.abspath(notebook_dir)
@@ -70,5 +73,5 @@ def main(notebook_dir, results_dir):
             time.sleep(1)
     except KeyboardInterrupt:
         observer.stop()
-        self.pool.close()
+        event_handler.stop()
     observer.join()
