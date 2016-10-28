@@ -70,4 +70,5 @@ def main(notebook_dir, results_dir):
             time.sleep(1)
     except KeyboardInterrupt:
         observer.stop()
+        self.pool.close()
     observer.join()

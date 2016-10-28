@@ -64,3 +64,13 @@ class KeyedProcessPool(object):
                 self.upcoming_invocations[key].cancel()
             self.upcoming_invocations[key] = threading.Timer(self.throttle_sec, delayed_invocation)
             self.upcoming_invocations[key].start()
+    
+    def close(self):
+        with self.lock:
+            for key, upcoming_invocation in self.upcoming_invocations.items():
+                upcoming_invocation.cancel()
+                del self.upcoming_invocations[key]
+        
+        for key, active_process in self.active_processes.items():
+            active_process.kill()
+            del self.active_processes[key]
