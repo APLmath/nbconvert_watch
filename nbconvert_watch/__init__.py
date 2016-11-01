@@ -15,7 +15,7 @@ def runAndConvertNotebook(notebook_path, results_dir):
         notebook = nbformat.read(f, as_version=4)
 
     execute_preprocessor = nbconvert.preprocessors.ExecutePreprocessor(
-        timeout=None,
+        timeout=-1,
         allow_errors=True)
     execute_preprocessor.preprocess(notebook, {
         'metadata': {
