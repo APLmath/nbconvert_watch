@@ -3,6 +3,7 @@ import threading
 import os.path
 import nbformat
 import nbconvert
+import logging
 from nbconvert_watch import utils
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
@@ -46,12 +47,15 @@ class RunNotebookEventHandler(PatternMatchingEventHandler):
         self.pool.apply_async(notebook_path, runAndConvertNotebook, args=(notebook_path, self.results_dir))
 
     def on_created(self, event):
+        logging.info('Created: %s' % event.src_path)
         self.run(event)
 
     def on_modified(self, event):
+        logging.info('Modified: %s' % event.src_path)
         self.run(event)
 
     def on_deleted(self, event):
+        logging.info('Deleted: %s' % event.src_path)
         self.run(event)
     
     def stop(self):

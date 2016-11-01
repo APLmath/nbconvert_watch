@@ -2,6 +2,7 @@ import multiprocessing
 import threading
 import psutil
 import time
+import logging
 
 def process_apply_and_signal(func, args, kwargs, completed_value, process_event):
     func(*args, **kwargs)
@@ -28,6 +29,7 @@ class KillableProcess(object):
                 psutil_process = psutil.Process(pid=process.pid)
                 psutil_process.kill()
 
+            logging.info('Process finished after %s seconds' % (time.time() - self.start_time))
             self.completion_func()
 
         thread = threading.Thread(target=thread_func, args=(self.target, self.args, self.kwargs, self.completed_value, self.process_event))
@@ -48,14 +50,18 @@ class KeyedProcessPool(object):
     def apply_async(self, key, func, args=(), kwargs={}):
         if key in self.active_processes:
             self.active_processes[key].kill()
+            logging.info('Process terminated for key %s' % key)
 
         def delete_key_from_processes():
             del self.active_processes[key]
+            logging.info('Process finished for key %s' % key)
 
         def delayed_invocation():
             with self.lock:
                 del self.upcoming_invocations[key]
             process = KillableProcess(func, args=args, kwargs=kwargs, completion_func=delete_key_from_processes)
+
+            logging.info('Starting process for key %s' % key)
             self.active_processes[key] = process
             process.start()
 
