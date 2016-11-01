@@ -46,7 +46,7 @@ class KeyedProcessPool(object):
         self.active_processes = {}
 
     def apply_async(self, key, func, args=(), kwargs={}):
-        if self.active_processes.has_key(key):
+        if key in self.active_processes:
             self.active_processes[key].kill()
 
         def delete_key_from_processes():
@@ -60,7 +60,7 @@ class KeyedProcessPool(object):
             process.start()
 
         with self.lock:
-            if self.upcoming_invocations.has_key(key):
+            if key in self.upcoming_invocations:
                 self.upcoming_invocations[key].cancel()
             self.upcoming_invocations[key] = threading.Timer(self.throttle_sec, delayed_invocation)
             self.upcoming_invocations[key].start()
